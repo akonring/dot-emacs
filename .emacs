@@ -41,20 +41,3 @@
 (recentf-mode 1)
 (global-set-key (kbd "C-x C-r") 'recentf-open-files)
 
-;; RUBY configuration
-;; Setting rbenv path to use ruby global version
-(when (string-equal system-type "darwin")
-  (let (
-        (mypaths
-         '(
-           ":/.rbenv/shims"
-           "/.rbenv/bin"
-           "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/mysql/bin"
-           "/usr/local/Cellar/emacs/HEAD/share/emacs/24.3.50"
-           ) 
-         )
-        )
-    (setenv "PATH" (mapconcat 'identity mypaths ":") )
-    (setq exec-path (append mypaths (list "" exec-directory)) )
-    ) 
-  )
