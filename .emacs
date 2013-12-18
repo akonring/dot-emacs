@@ -17,9 +17,12 @@
   "Loading dot emacs file"
   (interactive)
   (load-file "~/.emacs"))
+(load-file "~/.emacs.d/proofgeneral/generic/proof-site.el")
 
-(setq-default tab-width 2)
 (setq-default indent-tabs-mode nil)
+(setq-default c-basic-offset 2)
+(setq-default js-basic-offset 2)
+(windmove-default-keybindings)
 
 ;; Aesthetics is honey for the soul
 (load-theme 'tango-dark)
@@ -40,4 +43,33 @@
 ;; Show recent files and bind to keys
 (recentf-mode 1)
 (global-set-key (kbd "C-x C-r") 'recentf-open-files)
+
+(require 'tramp)
+(setq tramp-default-method "ssh")
+(setq default-directory "~/")
+
+;; Setting Paths
+(when (string-equal system-type "darwin")
+  (let (
+        (mypaths
+         '(
+           "/usr/local/share/npm/bin"
+           "/Users/anderskonring/.rbenv/shims"
+           "/usr/local/heroku/bin"
+           "/usr/local/pgsql/bin"
+           "/usr/local/bin"
+           "/usr/bin"
+           "/bin"
+           "/usr/sbin"
+           "/sbin"
+           "/opt/X11/bin"
+           "/usr/texbin"
+           "/bin"
+           ) )
+        )
+
+    (setenv "PATH" (mapconcat 'identity mypaths ":"))
+
+    (setq exec-path (append mypaths (list "." exec-directory)) )
+    ) )
 
