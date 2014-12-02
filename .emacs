@@ -3,7 +3,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Packages
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (require 'cl)				
 (add-to-list 'load-path "~/.emacs.d/el-get/el-get")
 
@@ -63,9 +62,19 @@
  my:el-get-packages
  '(el-get				; el-get is self-hosting
    escreen            			; screen for emacs, C-\ C-h
+   org-mode                             ; the new org-mode
    php-mode-improved			; if you're into php...
    switch-window			; takes over C-x o
-   auto-complete			; complete as you type with overlays
+   company-mode
+   clojure-mode
+   cider
+   
+   color-theme-solarized
+   twitter
+   org-ac
+   lorem-ipsum
+   ido-ubiquitous
+   inf-ruby
    openwith
    ledger-mode
    undo-tree
@@ -95,6 +104,11 @@
 ;; install new packages and init already installed packages
 (el-get 'sync my:el-get-packages)
 
+(setq user-full-name "Anders Konring"
+      user-mail-address "anders.konring@gmail.com")
+
+
+
 ;; on to the visual settings
 (setq inhibit-splash-screen t)		; no splash screen, thanks
 (line-number-mode 1)			; have line numbers and
@@ -106,11 +120,11 @@
   (menu-bar-mode -1))
 
 ;; choose your own fonts, in a system dependant way
-(if (string-match "apple-darwin" system-configuration)
+(if (and (string-match "apple-darwin" system-configuration) window-system)
     (set-face-font 'default "Monaco-13")
   (set-face-font 'default "Monospace-10"))
 
-(global-hl-line-mode)			; highlight current line
+(global-hl-line-mode 0)			; highlight current line
 (global-linum-mode 1)			; add line numbers on the left
 
 ;; avoid compiz manager rendering bugs
@@ -129,7 +143,7 @@
 (windmove-default-keybindings 'meta)
 (setq windmove-wrap-around t)
 
-; winner-mode provides C-<left> to get back to previous window layout
+                                        ; winner-mode provides C-<left> to get back to previous window layout
 (winner-mode 1)
 
 ;; Auto-reload buffer
@@ -162,6 +176,11 @@
 (setq ido-use-filename-at-point 'guess)
 (setq ido-show-dot-for-dired t)
 (setq ido-default-buffer-method 'selected-window)
+
+(require 'ido-ubiquitous)
+(ido-ubiquitous-mode t)
+
+
 
 ;; default key to switch buffer is C-x b, but that's not easy enough
 ;;
@@ -215,6 +234,7 @@
 (global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)
 
 ;; Undo and redo
+(setq undo-tree-mode 1)
 (defalias 'redo 'undo-tree-redo)
 (global-set-key (kbd "C-z") 'undo) 
 (global-set-key (kbd "C-M-z") 'redo)
@@ -233,8 +253,7 @@
 
 (setq inhibit-startup-message t)
 
-;; Auto-complete in every mode
-(or global-auto-complete-mode (global-auto-complete-mode))
+(company-mode)
 
 ;; Org mode
 (setq org-default-notes-file "~/Dropbox/org/notes.org")
@@ -250,9 +269,6 @@
   "Open dired-mode in the org directory"
   (interactive)
   (find-file org-agenda-files))
-
- (setq org-capture-templates                                                      
-       '(("m" "TODO from Mail" entry (file+headline "~/Dropbox/org/notes.org" "Inbox") "* TODO %?, Link: %a")))
 
 ;; ERC autojoin and open
 (setq erc-auto-reconnect 1)
@@ -277,15 +293,11 @@
 ;;; if emacs does not set up a dictionary automatically this is what
 ;;; is needed.
 
-(add-to-list 'ispell-dictionary-alist
-	     '("dansk"
-	       "[a-zA-Z\346\370\345\306\330\305]" 
-	       "[^a-zA-Z\346\370\345\306\330\305]"
-	       "[']" t ("-C" "-d" "dansk") "~latin1" iso-8859-1))
 (defun my-ispell-danish-dictionary ()
   "Switch to the Danish dictionary."
   (interactive)
   (ispell-change-dictionary "dansk"))
+
 (require 'easymenu)
 (easy-menu-add-item  
  nil 
@@ -309,14 +321,14 @@
                                (let ((count (count-matches (cdr x))))
                                  (cons (if (stringp count)
                                            (string-to-number count) ;; emacs v21
-                                           count)                   ;; emacs v22
+                                         count)                   ;; emacs v22
                                        (car x))))
                        guess-language-rules))
            (key (car (sort (map 'list 'car count) '>))))
       (if (number-or-marker-p key)
           (cdr (assoc key count))
-          ;; return first language as default
-          (car (car guess-language-rules))))))
+        ;; return first language as default
+        (car (car guess-language-rules))))))
 
 ;; hook the language guesser on to the flyspell mode
 (add-hook 'flyspell-mode-hook
@@ -331,97 +343,215 @@
   (setq flyspell-mode 1)
   (flyspell-buffer))
 
-
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(ledger-binary-path "/Users/anderskonring/.cabal/bin/hledger")
+
  '(openwith-associations (quote (("\\.pdf\\'" "open" (file)) ("\\.mp3\\'" "open" (file)) ("\\.\\(?:mpe?g\\|avi\\|wmv\\)\\'" "open" ("-idx" file)) ("\\.\\(?:jp?g\\|png\\)\\'" "open" (file)))))
- '(org-agenda-files (quote ("~/Dropbox/akonring/org/index.org" "~/Dropbox/education/eth/eth.org" "~/Dropbox/org/contacts.org" "~/Dropbox/org/misc.org" "/Users/anderskonring/Dropbox/org/u16.org" "/Users/anderskonring/Dropbox/org/habits.org" "/Users/anderskonring/Dropbox/org/mustrun.org" "/Users/anderskonring/Dropbox/org/notes.org")))
+
+ '(org-agenda-files (quote ("~/Dropbox/education/eth/ethp.org" "/Users/anderskonring/Dropbox/org/notes.org" "~/Dropbox/objectives2015.org" "~/Dropbox/akonring/org/index.org" "~/Dropbox/org/contacts.org" "/Users/anderskonring/Dropbox/org/mustrun.org")))
+
  '(org-agenda-ndays 14)
- '(org-file-apps (quote ((auto-mode . emacs) ("\\.mm\\'" . default) ("\\.x?html?\\'" . "open") ("\\.pdf\\'" . "open"))))
- '(org-modules (quote (org-bbdb org-bibtex org-crypt org-ctags org-docview org-gnus org-id org-info org-jsinfo org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-mac-link-grabber))))
+
+ '(org-capture-templates 
+   (quote 
+    (("m" "TODO from Mail" entry (file+headline "~/Dropbox/org/notes.org" "Inbox") "* TODO %?\n  Link: %A")
+    ("e" "Reference to mail" plain (file+headline "~/Dropbox/education/eth/ethp.org" "References") "Reference: %? %A"))))
+
+ '(org-file-apps (quote ((auto-mode . emacs) ("\\.mm\\'" . default) ("\\.x?html?\\'" . "open %s") ("\\.pdf\\'" . "open %s"))))
+
+ '(org-modules (quote (org-bbdb org-bibtex org-crypt org-ctags org-docview org-gnus org-id org-info org-jsinfo org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-beamer)))
+
+ '(tex-dvi-view-command (quote (cond ((eq window-system (quote x)) "xdvi") ((eq window-system (quote w32)) "yap") (t "dvi2tty * | cat -s"))))
+
+ '(uniquify-buffer-name-style (quote forward) nil (uniquify)))
+
+(require 'ox-beamer)
+(require 'ox-latex)
+
+(setq org-agenda-skip-scheduled-if-deadline-is-shown t)
 
 (setq org-log-done 'time)
-(setq org-file-apps
-      org-file-apps-defaults-macosx)
 
-;; ;; Org publishing
-;; (setq org-publish-project-alist
-;;       '(("akonring-pages"
-;;          :base-directory "~/Dropbox/akonring/org/"
-;;          :html-extension "html"
-;;          :base-extension "org"
-;;          :publishing-directory "~/Dropbox/akonring/public_html"
-;;          :publishing-function (org-html-publish-to-html)
-;;          :auto-sitemap t
-;;          :recursive t
-;;          :makeindex t
-;;          :preserve-breaks nil
-;;          :sitemap-sort-files chronologically
-;;          :with-tasks nil
-;;          :section-numbers nil
-;;          :with-toc nil
-;;          :html-head-extra
-;;          "<link rel=\"stylesheet\" href=\"u/bootstrap.min.css\" />
-;; <link rel=\"stylesheet\" href=\"index.css\" type=\"text/css\" />
-;;     <script src=\"http://www.google.com/jsapi\" type=\"text/javascript\"></script>
-;;     <script type=\"text/javascript\">
-;;       google.load(\"jquery\", \"1.3.1\");
-;;     </script>"
-;;          :html-preamble ,html-preamble
-;;          :htmlized-source t
-;;          :html-postamble ,html-postamble)
-;;         ("akonring-articles"
-;;          :base-directory "~/Dropbox/akonring/org/"
-;;          :publishing-directory "~/Dropbox/akonring/public_html/"
-;;          :base-extension "org"
-;;          :html-extension "html"
-;;          :recursive t
-;;          :makeindex t
-;;          :preserve-breaks nil
-;;          :sitemap-sort-files chronologically         
-;;          :publishing-function org-html-publish-to-html
-;;          :headline-levels 3
-;;          :section-numbers nil
-;;          :with-toc nil
-;;          :htmlized-source t
-;;          :html-postamble t
-;;          :html-preamble t)
-;;         ("akonring-articles-source"
-;;          :base-directory "~/Dropbox/akonring/org/"
-;;          :base-extension "org"
-;;          :publishing-directory "~/Dropbox/public_html/"
-;;          :publishing-function (org-org-publish-to-org)
-;;          :recursive t
-;;          :with-tasks nil
-;;          :htmlized-source t)
-;;         ("akonring-rss"
-;;           :base-directory "~/Dropbox/akonring/org/"
-;;           :base-extension "org"
-;;           :publishing-directory "~/Dropbox/akonring/public_html/"
-;;           :publishing-function (org-rss-publish-to-rss)
-;;           :html-link-home "~/Dropbox/akonring/public_html/"
-;;           :html-link-use-abs-url t
-;;           :exclude ".*"
-;;           :include ("blog.org"))
-;;         ("akonring-images"
-;;          :base-directory "~/Dropbox/akonring/org/images/"
-;;          :base-extension "jpg\\|gif\\|png"
-;;          :publishing-directory "~/Dropbox/akonring/public_html/images/"
-;;          :publishing-function org-publish-attachment)
-;;         ("akonring-css"
-;;          :base-directory "~/Dropbox/akonring/org/stylesheets/"
-;;          :base-extension "css"
-;;          :publishing-directory "~/Dropbox/akonring/public_html/stylesheets/"
-;;          :publishing-function org-publish-attachment)
-;;         ("website" :components ("akonring-articles" "akonring-rss"))))
-
-;; (setq org-feed-alist
-;;       '(("article-feed"
-;;          "file:///Users/anderskonring/Dropbox/akonring/public_html/akonring-blog.xml"
-;;          "/Users/anderskonring/Dropbox/akonring/org/index.org" "Articles")))
+;; Org publishing
+(setq org-publish-project-alist
+      '(("akonring-pages"
+         :base-directory "/Users/anderskonring/Dropbox/akonring/org/"
+         :html-extension "html"
+         :base-extension "org"
+         :publishing-directory "/Users/anderskonring/Dropbox/akonring/public_html/"
+         :publishing-function (org-html-publish-to-html)
+         :recursive t
+         :auto-sitemap t
+         :makeindex t
+         :preserve-breaks nil
+         :sitemap-sort-files chronologically
+         :with-tasks nil
+         :section-numbers nil
+         :with-toc nil
+         :html-head-extra
+         "<link rel=\"stylesheet\" href=\"u/bootstrap.min.css\" />
+<link rel=\"stylesheet\" href=\"index.css\" type=\"text/css\" />
+    <script src=\"http://www.google.com/jsapi\" type=\"text/javascript\"></script>
+    <script type=\"text/javascript\">
+      google.load(\"jquery\", \"1.3.1\");
+    </script>"
+         :html-preamble ,html-preamble
+         :htmlized-source t
+         :html-postamble ,html-postamble)
+        ("akonring-articles"
+         :base-directory "/Users/anderskonring/Dropbox/akonring/org/articles/"
+         :publishing-directory "/Users/anderskonring/Dropbox/akonring/public_html/articles"
+         :base-extension "org"
+         :html-extension "html"
+         :recursive t
+         :makeindex t
+         :preserve-breaks nil
+         :sitemap-sort-files chronologically         
+         :publishing-function org-html-publish-to-html
+         :headline-levels 3
+         :section-numbers nil
+         :with-toc nil
+         :htmlized-source t
+         :html-postamble t
+         :html-preamble t)
+        ("akonring-articles-source"
+         :base-directory "/Users/anderskonring/Dropbox/akonring/org/articles/"
+         :base-extension "org"
+         :publishing-directory "~/Dropbox/public_html/"
+         :publishing-function (org-org-publish-to-org)
+         :recursive t
+         :with-tasks nil
+         :htmlized-source t)
+        ("akonring-rss"
+         :base-directory "/Users/anderskonring/Dropbox/akonring/org/"
+         :base-extension "org"
+         :publishing-directory "~/Dropbox/akonring/public_html/"
+         :publishing-function (org-rss-publish-to-rss)
+         :html-link-home "/Users/anderskonring/Dropbox/akonring/public_html/"
+         :html-link-use-abs-url t
+         :exclude ".*"
+         :include ("akonring-blog.org"))
+        ("akonring-images"
+         :base-directory "/Users/anderskonring/Dropbox/akonring/org/images/"
+         :base-extension "jpg\\|gif\\|png"
+         :publishing-directory "~/Dropbox/akonring/public_html/images/"
+         :publishing-function org-publish-attachment)
+        ("akonring-css"
+         :base-directory "/Users/anderskonring/Dropbox/akonring/org/stylesheets/"
+         :base-extension "css"
+         :publishing-directory "/Users/anderskonring/Dropbox/akonring/public_html/stylesheets/"
+         :publishing-function org-publish-attachment)
+        ("website" :components ("akonring-pages" "akonring-articles" "akonring-rss"))))
 
 (global-set-key (kbd "C-h C-f") 'find-function)
 
+(recentf-mode 1)
+(setq recentf-max-menu-items 25)
+(global-set-key "\C-x\ \C-r" 'recentf-open-files)
+
+(setq-default
+  gnus-summary-line-format "%U%R%z %(%&user-date;  %-15,15f  %B%s%)\n"
+  gnus-user-date-format-alist '((t . "%Y-%m-%d %H:%M"))
+  gnus-summary-thread-gathering-function 'gnus-gather-threads-by-references
+  gnus-sum-thread-tree-false-root ""
+  gnus-sum-thread-tree-indent ""
+  gnus-sum-thread-tree-leaf-with-other "-> "
+  gnus-sum-thread-tree-root ""
+  gnus-sum-thread-tree-single-leaf "|_ "
+  gnus-sum-thread-tree-vertical "|")
+
+(setq gnus-thread-sort-functions
+      '(
+        (not gnus-thread-sort-by-date)
+        (not gnus-thread-sort-by-number)
+        ))
+
+(setq gnus-select-method '(nnimap "gmail.com"
+                                  (nnimap-address "imap.gmail.com")
+                                  (nnimap-server-port 993)
+                                  (nnimap-stream ssl)))
+
+(setq message-send-mail-function 'smtpmail-send-it
+      smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
+      smtpmail-auth-credentials '(("smtp.gmail.com" 587 "anders.konring@gmail.com" nil))
+      smtpmail-default-smtp-server "smtp.gmail.com"
+      smtpmail-smtp-server "smtp.gmail.com"
+      smtpmail-smtp-service 587)
+
+
+(setq org-completion-use-ido t)
+(setq ido-everywhere t)
+(setq ido-max-directory-size 100000)
+(ido-mode (quote both))
+; Use the current window when visiting files and buffers with ido
+(setq ido-default-file-method 'selected-window)
+(setq ido-default-buffer-method 'selected-window)
+
+(defun recentf-open-files-compl ()
+  (interactive)
+  (let* ((all-files recentf-list)
+         (tocpl (mapcar (function
+                         (lambda (x) (cons (file-name-nondirectory x) x))) all-files))
+         (prompt (append '("File name: ") tocpl))
+         (fname (completing-read (car prompt) (cdr prompt) nil nil)))
+    (find-file (cdr (assoc-string fname tocpl)))))
+
+(global-set-key [(control x)(control r)] 'recentf-open-files-compl)
+                                        ; Use the current window for indirect buffer display
+
+(setq org-indirect-buffer-display 'current-window)
+
+(global-set-key (kbd "A-u") 'revert-buffer)
+
+(defun substi-danish-characters () 
+  "Substitute all danish characters"
+  (interactive)
+  (progn
+      (replace-string "æ" "ae")
+      (replace-string "ø" "oe")
+    (replace-string "å" "aa"))) 
+
+(add-hook 'latex-mode-hook '(lambda()
+                              (defun tex-view ()
+                                (interactive)
+                                (tex-send-command "open"
+                                  (tex-append tex-print-file ".pdf")))))
+
+(require 'mm-util)
+(add-to-list 'mm-inhibit-file-name-handlers 'openwith-file-handler)
+(global-set-key "\M- " 'hippie-expand)
+(setq abbrev-file-name             ;; tell emacs where to read abbrev
+      "~/.emacs.d/abbrev_defs")
+(setq gnus-permanently-visible-groups "INBOX")
+
+(defun my-interactive-eval-to-repl (form)
+  (let ((buffer nrepl-nrepl-buffer))
+  (nrepl-send-string form (nrepl-handler buffer) nrepl-buffer-ns)))
+
+(defun my-eval-last-expression-to-repl ()
+  (interactive)
+  (my-interactive-eval-to-repl (nrepl-last-expression)))
+
+(eval-after-load 'nrepl
+  '(progn 
+     (define-key nrepl-interaction-mode-map (kbd "C-x C-e") 'my-eval-last-expression-to-repl)))
+
+(setq fill-column 20)
+
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+
+(setq org-startup-truncated t)
+(require 'uniquify)
+(setq org-indent-indentation-per-level 2)
+(load-theme 'solarized-dark t)
+(put 'downcase-region 'disabled nil)
+(setq org-list-allow-alphabetical t)
