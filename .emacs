@@ -31,10 +31,10 @@
                    (global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)))
 
    (:name smex				; a better (ido like) M-x
-	  :after (progn
-		   (setq smex-save-file "~/.emacs.d/.smex-items")
-		   (global-set-key (kbd "M-x") 'smex)
-		   (global-set-key (kbd "M-X") 'smex-major-mode-commands)))
+          :after (progn
+        	   (setq smex-save-file "~/.emacs.d/.smex-items")
+        	   (global-set-key (kbd "M-x") 'smex)
+        	   (global-set-key (kbd "M-X") 'smex-major-mode-commands)))
 
    (:name magit				; git meet emacs, and a binding
 	  :after (progn
@@ -55,34 +55,33 @@
                         (add-hook 'ielm-mode-hook             #'enable-paredit-mode)
                         (add-hook 'lisp-mode-hook             #'enable-paredit-mode)
                         (add-hook 'lisp-interaction-mode-hook #'enable-paredit-mode)
-                        (add-hook 'scheme-mode-hook           #'enable-paredit-mode))paren)))
+                        (add-hook 'scheme-mode-hook           #'enable-paredit-mode)))))
 
 ;; now set our own packages
 (setq
  my:el-get-packages
- '(el-get				; el-get is self-hosting
-   escreen            			; screen for emacs, C-\ C-h
-   org-mode                             ; the new org-mode
-   php-mode-improved			; if you're into php...
-   switch-window			; takes over C-x o
+ '(el-get				
+   escreen            			
+   twittering-mode
+   switch-window			
    company-mode
    clojure-mode
-   cider
-   
-   color-theme-solarized
    twitter
+   cider
+   color-theme-solarized
    org-ac
    lorem-ipsum
    ido-ubiquitous
    inf-ruby
    openwith
    ledger-mode
+   org-mode
    undo-tree
-   wanderlust
-   yasnippet 				; powerful snippet mode
-   zencoding-mode			; http://www.emacswiki.org/emacs/ZenCoding
-   color-theme		                ; nice looking emacs
-   color-theme-tango))	                ; check out color-theme-solarized
+   browse-kill-ring
+   yasnippet
+   json-mode
+   color-theme		                
+   color-theme-tango))	                
 
 
 ;; Some recipes require extra tools to be installed
@@ -104,27 +103,23 @@
 ;; install new packages and init already installed packages
 (el-get 'sync my:el-get-packages)
 
-(setq user-full-name "Anders Konring"
-      user-mail-address "anders.konring@gmail.com")
-
-
-
-;; on to the visual settings
+;; visual settings
 (setq inhibit-splash-screen t)		; no splash screen, thanks
 (line-number-mode 1)			; have line numbers and
 (column-number-mode 1)			; column numbers in the mode line
 (tool-bar-mode -1)			; no tool bar with icons
 (scroll-bar-mode -1)			; no scroll bars
 (unless (string-match "apple-darwin" system-configuration)
-  ;; on mac, there's always a menu bar drown, don't have it empty
+  ;; on mac, there's always a menu bar drawn, don't have it empty
   (menu-bar-mode -1))
+(color-theme-solarized-dark)            ; pick my favorite color-theme
 
-;; choose your own fonts, in a system dependant way
+;; choose your own fonts, in a system dependend way
 (if (and (string-match "apple-darwin" system-configuration) window-system)
-    (set-face-font 'default "Monaco-13")
-  (set-face-font 'default "Monospace-10"))
+    (set-face-font 'default "Monaco-12")
+  (set-face-font 'default "Monospace-9"))
 
-(global-hl-line-mode 0)			; highlight current line
+(global-hl-line-mode 1)			; highlight current line
 (global-linum-mode 1)			; add line numbers on the left
 
 ;; avoid compiz manager rendering bugs
@@ -136,14 +131,19 @@
   (setq mac-command-modifier 'meta)
   (setq mac-option-modifier 'alt))
 
-;; Use the clipboard, pretty please, so that copy/paste "works"
+;; use the clipboard, so that copy/paste "works"
 (setq x-select-enable-clipboard t)
 
-;; Navigate windows with M-<arrows>
+;; navigate windows with M-<arrows>
 (windmove-default-keybindings 'meta)
 (setq windmove-wrap-around t)
 
-                                        ; winner-mode provides C-<left> to get back to previous window layout
+;; stop windmoving when in Org-mode
+(setq org-replace-disputed-keys t)
+(setq paredit-replace-disputed-keys t)
+
+;; Awesome. winner-mode has a undo mechanism on window layouts
+;; winner-mode provides C-<left> to get back to previous window layout
 (winner-mode 1)
 
 ;; Auto-reload buffer
@@ -157,7 +157,9 @@
 ;; emacs buffers, and there's the default char mode that will send your
 ;; input char-by-char, so that curses application see each of your key
 ;; strokes.
-;;
+;; See guide by @mickeynp at
+;; http://www.masteringemacs.org/article/running-shells-in-emacs-overview
+
 ;; The default way to toggle between them is C-c C-j and C-c C-k, let's
 ;; better use just one key to do the same.
 (require 'term)
@@ -176,17 +178,10 @@
 (setq ido-use-filename-at-point 'guess)
 (setq ido-show-dot-for-dired t)
 (setq ido-default-buffer-method 'selected-window)
+(setq org-completion-use-ido t)
 
 (require 'ido-ubiquitous)
 (ido-ubiquitous-mode t)
-
-
-
-;; default key to switch buffer is C-x b, but that's not easy enough
-;;
-;; when you do that, to kill emacs either close its frame from the window
-;; manager or do M-x kill-emacs.  Don't need a nice shortcut for a once a
-;; week (or day) action.
 (global-set-key (kbd "C-x C-b") 'ido-switch-buffer)
 (global-set-key (kbd "C-x C-c") 'ido-switch-buffer)
 (global-set-key (kbd "C-x B") 'ibuffer)
@@ -234,8 +229,9 @@
 (global-set-key (kbd "C-c C-<") 'mc/mark-all-like-this)
 
 ;; Undo and redo
-(setq undo-tree-mode 1)
+(global-undo-tree-mode)
 (defalias 'redo 'undo-tree-redo)
+(defalias 'undo 'undo-tree-undo)
 (global-set-key (kbd "C-z") 'undo) 
 (global-set-key (kbd "C-M-z") 'redo)
 
@@ -253,16 +249,32 @@
 
 (setq inhibit-startup-message t)
 
-(company-mode)
+;; persistent scratch buffer
+(defun save-persistent-scratch ()
+  "Write the contents of *scratch* to the file name
+`persistent-scratch-file-name'."
+  (with-current-buffer (get-buffer-create "*scratch*")
+    (write-region (point-min) (point-max) "~/.emacs-persistent-scratch")))
+
+(defun load-persistent-scratch ()
+  "Load the contents of `persistent-scratch-file-name' into the
+  scratch buffer, clearing its contents first."
+  (if (file-exists-p "~/.emacs-persistent-scratch")
+      (with-current-buffer (get-buffer "*scratch*")
+        (delete-region (point-min) (point-max))
+        (insert-file-contents "~/.emacs-persistent-scratch"))))
+(push #'load-persistent-scratch after-init-hook)
+(push #'save-persistent-scratch kill-emacs-hook)
+(run-with-idle-timer 300 t 'save-persistent-scratch)
+
+;; Globally enable company mode
+(add-hook 'after-init-hook 'global-company-mode)
 
 ;; Org mode
 (setq org-default-notes-file "~/Dropbox/org/notes.org")
 (define-key global-map "\C-cc" 'org-capture)
-
 (global-set-key (kbd "C-c a") 'org-agenda)
-
 (setq org-agenda-files '("~/Dropbox/org/"))
-
 (setq org-indent-mode 1)
 
 (defun org-dir ()
@@ -285,13 +297,12 @@
 
 ;; Spelling
 
-;; Remove Flyspell from some sub modes of text mode
+(setq ispell-personal-dictionary "~/.ispell")
+
+;; Remove flyspell from unrelated modes
 (dolist (hook '(change-log-mode-hook 
  		log-edit-mode-hook))
   (add-hook hook (lambda () (flyspell-mode -1))))
-
-;;; if emacs does not set up a dictionary automatically this is what
-;;; is needed.
 
 (defun my-ispell-danish-dictionary ()
   "Switch to the Danish dictionary."
@@ -335,7 +346,7 @@
 	  (lambda () (ispell-change-dictionary
 		      (guess-buffer-language))))
 
-;; ;;; interactive wrapper
+;; interactive wrapper
 (defun guess-language ()
   "Set the language of this buffer by guess."
   (interactive)
@@ -349,31 +360,51 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(ledger-binary-path "/Users/anderskonring/.cabal/bin/hledger")
-
- '(openwith-associations (quote (("\\.pdf\\'" "open" (file)) ("\\.mp3\\'" "open" (file)) ("\\.\\(?:mpe?g\\|avi\\|wmv\\)\\'" "open" ("-idx" file)) ("\\.\\(?:jp?g\\|png\\)\\'" "open" (file)))))
-
- '(org-agenda-files (quote ("~/Dropbox/education/eth/ethp.org" "/Users/anderskonring/Dropbox/org/notes.org" "~/Dropbox/objectives2015.org" "~/Dropbox/akonring/org/index.org" "~/Dropbox/org/contacts.org" "/Users/anderskonring/Dropbox/org/mustrun.org")))
-
+ '(openwith-associations
+   (quote
+    (("\\.pdf\\'" "open"
+      (file))
+     ("\\.mp3\\'" "open"
+      (file))
+     ("\\.\\(?:mpe?g\\|avi\\|wmv\\)\\'" "open"
+      ("-idx" file))
+     ("\\.\\(?:jp?g\\|png\\)\\'" "open"
+      (file)))))
+ '(org-agenda-files
+   (quote
+    ("~/Dropbox/org/projects.org" "~/Dropbox/org/logs.org" "~/Dropbox/education/eth/ethp.org" "/Users/anderskonring/Dropbox/org/notes.org" "~/Dropbox/akonring/org/index.org" "~/Dropbox/org/contacts.org" "/Users/anderskonring/Dropbox/org/mustrun.org")))
  '(org-agenda-ndays 14)
-
- '(org-capture-templates 
-   (quote 
-    (("m" "TODO from Mail" entry (file+headline "~/Dropbox/org/notes.org" "Inbox") "* TODO %?\n  Link: %A")
-    ("e" "Reference to mail" plain (file+headline "~/Dropbox/education/eth/ethp.org" "References") "Reference: %? %A"))))
-
- '(org-file-apps (quote ((auto-mode . emacs) ("\\.mm\\'" . default) ("\\.x?html?\\'" . "open %s") ("\\.pdf\\'" . "open %s"))))
-
- '(org-modules (quote (org-bbdb org-bibtex org-crypt org-ctags org-docview org-gnus org-id org-info org-jsinfo org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-beamer)))
-
- '(tex-dvi-view-command (quote (cond ((eq window-system (quote x)) "xdvi") ((eq window-system (quote w32)) "yap") (t "dvi2tty * | cat -s"))))
-
+ '(org-capture-templates
+   (quote
+    (("m" "TODO from Mail" entry
+      (file+headline "~/Dropbox/org/notes.org" "Inbox")
+      "* TODO %?
+  Link: %A")
+     ("e" "Reference to mail" plain
+      (file+headline "~/Dropbox/education/eth/ethp.org" "References")
+      "Reference: %? %A"))))
+ '(org-file-apps
+   (quote
+    ((auto-mode . emacs)
+     ("\\.mm\\'" . default)
+     ("\\.x?html?\\'" . "open %s")
+     ("\\.pdf\\'" . "open %s"))))
+ '(org-modules
+   (quote
+    (org-bbdb org-bibtex org-crypt org-ctags org-docview org-id org-info org-jsinfo org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-beamer org-mu4e)))
+ '(tex-dvi-view-command
+   (quote
+    (cond
+     ((eq window-system
+	  (quote x))
+      "xdvi")
+     ((eq window-system
+	  (quote w32))
+      "yap")
+     (t "dvi2tty * | cat -s"))))
  '(uniquify-buffer-name-style (quote forward) nil (uniquify)))
 
-(require 'ox-beamer)
-(require 'ox-latex)
-
 (setq org-agenda-skip-scheduled-if-deadline-is-shown t)
-
 (setq org-log-done 'time)
 
 ;; Org publishing
@@ -450,60 +481,15 @@
 (global-set-key (kbd "C-h C-f") 'find-function)
 
 (recentf-mode 1)
-(setq recentf-max-menu-items 25)
-(global-set-key "\C-x\ \C-r" 'recentf-open-files)
-
-(setq-default
-  gnus-summary-line-format "%U%R%z %(%&user-date;  %-15,15f  %B%s%)\n"
-  gnus-user-date-format-alist '((t . "%Y-%m-%d %H:%M"))
-  gnus-summary-thread-gathering-function 'gnus-gather-threads-by-references
-  gnus-sum-thread-tree-false-root ""
-  gnus-sum-thread-tree-indent ""
-  gnus-sum-thread-tree-leaf-with-other "-> "
-  gnus-sum-thread-tree-root ""
-  gnus-sum-thread-tree-single-leaf "|_ "
-  gnus-sum-thread-tree-vertical "|")
-
-(setq gnus-thread-sort-functions
-      '(
-        (not gnus-thread-sort-by-date)
-        (not gnus-thread-sort-by-number)
-        ))
-
-(setq gnus-select-method '(nnimap "gmail.com"
-                                  (nnimap-address "imap.gmail.com")
-                                  (nnimap-server-port 993)
-                                  (nnimap-stream ssl)))
-
-(setq message-send-mail-function 'smtpmail-send-it
-      smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
-      smtpmail-auth-credentials '(("smtp.gmail.com" 587 "anders.konring@gmail.com" nil))
-      smtpmail-default-smtp-server "smtp.gmail.com"
-      smtpmail-smtp-server "smtp.gmail.com"
-      smtpmail-smtp-service 587)
-
-
-(setq org-completion-use-ido t)
-(setq ido-everywhere t)
-(setq ido-max-directory-size 100000)
-(ido-mode (quote both))
-; Use the current window when visiting files and buffers with ido
-(setq ido-default-file-method 'selected-window)
-(setq ido-default-buffer-method 'selected-window)
-
-(defun recentf-open-files-compl ()
+(setq recentf-max-menu-items 100)
+(defun ido-recentf-open ()
+  "Use `ido-completing-read' to find a recent file."
   (interactive)
-  (let* ((all-files recentf-list)
-         (tocpl (mapcar (function
-                         (lambda (x) (cons (file-name-nondirectory x) x))) all-files))
-         (prompt (append '("File name: ") tocpl))
-         (fname (completing-read (car prompt) (cdr prompt) nil nil)))
-    (find-file (cdr (assoc-string fname tocpl)))))
+  (if (find-file (ido-completing-read "Find recent file: " recentf-list))
+      (message "Opening file...")
+    (message "Aborting")))
 
-(global-set-key [(control x)(control r)] 'recentf-open-files-compl)
-                                        ; Use the current window for indirect buffer display
-
-(setq org-indirect-buffer-display 'current-window)
+(global-set-key (kbd "C-x C-r") 'ido-recentf-open)
 
 (global-set-key (kbd "A-u") 'revert-buffer)
 
@@ -511,26 +497,25 @@
   "Substitute all danish characters"
   (interactive)
   (progn
-      (replace-string "æ" "ae")
-      (replace-string "ø" "oe")
+    (replace-string "æ" "ae")
+    (replace-string "ø" "oe")
     (replace-string "å" "aa"))) 
 
 (add-hook 'latex-mode-hook '(lambda()
                               (defun tex-view ()
                                 (interactive)
                                 (tex-send-command "open"
-                                  (tex-append tex-print-file ".pdf")))))
+                                                  (tex-append tex-print-file ".pdf")))))
 
 (require 'mm-util)
 (add-to-list 'mm-inhibit-file-name-handlers 'openwith-file-handler)
 (global-set-key "\M- " 'hippie-expand)
 (setq abbrev-file-name             ;; tell emacs where to read abbrev
       "~/.emacs.d/abbrev_defs")
-(setq gnus-permanently-visible-groups "INBOX")
 
 (defun my-interactive-eval-to-repl (form)
   (let ((buffer nrepl-nrepl-buffer))
-  (nrepl-send-string form (nrepl-handler buffer) nrepl-buffer-ns)))
+    (nrepl-send-string form (nrepl-handler buffer) nrepl-buffer-ns)))
 
 (defun my-eval-last-expression-to-repl ()
   (interactive)
@@ -542,16 +527,98 @@
 
 (setq fill-column 20)
 
+(setq org-startup-truncated t)
+
+(require 'uniquify)
+(setq org-indent-indentation-per-level 2)
+(put 'downcase-region 'disabled nil)
+(setq org-list-allow-alphabetical t)
+(add-hook 'org-mode-hook (lambda () (setq truncate-lines nil)))
+(setq org-columns-default-format "%20ITEM(Task) %10Effort(Effort){:} %10CLOCKSUM")
+
+(when (fboundp 'eww)
+  (progn
+    (defun xah-rename-eww-hook ()
+      "Rename eww browser's buffer so sites open in new page."
+      (rename-buffer "eww" t))
+    (add-hook 'eww-mode-hook 'xah-rename-eww-hook)))
+
+(setq org-agenda-skip-scheduled-if-done t)
+(setq org-icalendar-combined-agenda-file "~/Dropbox/org/org.ics")
+(setq org-icalendar-include-todo '(all))
+(setq org-icalendar-use-scheduled '(event-if-todo event-if-not-todo))
+(setq org-icalendar-use-deadline '(event-if-todo event-if-not-todo))
+
+;; this hook saves an ics file once an org-buffer is saved
+(run-with-idle-timer 300 t 'org-icalendar-combine-agenda-files)
+
+(add-to-list 'load-path "~/.emacs.d/el-get/mu/mu4e")
+
+(require 'mu4e)
+
+(setq mu4e-maildir "~/.mail/akonring")
+(setq mu4e-mu-binary  "/Users/anderskonring/.emacs.d/el-get/mu/mu/mu")
+
+
+(setq mu4e-drafts-folder "/drafts")
+(setq mu4e-sent-folder   "/sent")
+(setq mu4e-trash-folder  "/Trash")
+
+;; don't save message to Sent Messages, Gmail/IMAP takes care of this
+(setq mu4e-sent-messages-behavior 'delete)
+
+;; (See the documentation for `mu4e-sent-messages-behavior' if you have
+;; additional non-Gmail addresses and want assign them different
+;; behavior.)
+
+;; setup some handy shortcuts
+;; you can quickly switch to your Inbox -- press ``ji''
+;; then, when you want archive some messages, move them to
+;; the 'All Mail' folder by pressing ``ma''.
+
+(setq mu4e-maildir-shortcuts
+    '( ("/INBOX" . ?i)
+       ("/drafts" . ?d)
+       ("/archive" . ?a)))
+
+;; allow for updating mail using 'U' in the main view:
+(setq mu4e-get-mail-command "offlineimap")
+
+;; something about ourselves
+(setq
+   user-mail-address "anders.konring@gmail.com"
+   user-full-name  "Anders Konring"
+   mu4e-compose-signature "anders konring")
+
+;; sending mail -- replace USERNAME with your gmail username
+;; also, make sure the gnutls command line utils are installed
+;; package 'gnutls-bin' in Debian/Ubuntu
+
+(require 'smtpmail)
+(setq message-send-mail-function 'smtpmail-send-it
+   starttls-use-gnutls t
+   smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
+   smtpmail-auth-credentials
+     '(("smtp.gmail.com" 587 "anders.konring@gmail.com" nil))
+   smtpmail-default-smtp-server "smtp.gmail.com"
+   smtpmail-smtp-server "smtp.gmail.com"
+   smtpmail-smtp-service 587)
+
+;; alternatively, for emacs-24 you can use:
+;;(setq message-send-mail-function 'smtpmail-send-it
+;;     smtpmail-stream-type 'starttls
+;;     smtpmail-default-smtp-server "smtp.gmail.com"
+;;     smtpmail-smtp-server "smtp.gmail.com"
+;;     smtpmail-smtp-service 587)
+
+;; don't keep message buffers around
+(setq message-kill-buffer-on-exit t)
+
+;; Turn off sounds
+(setq visible-bell t)
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
-
-(setq org-startup-truncated t)
-(require 'uniquify)
-(setq org-indent-indentation-per-level 2)
-(load-theme 'solarized-dark t)
-(put 'downcase-region 'disabled nil)
-(setq org-list-allow-alphabetical t)
