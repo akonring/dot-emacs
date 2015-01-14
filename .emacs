@@ -22,7 +22,8 @@
 		   (global-set-key (kbd "<C-S-up>")     'buf-mojive-up)
 		   (global-set-key (kbd "<C-S-down>")   'buf-move-down)
 		   (global-set-key (kbd "<C-S-left>")   'buf-move-left)
-		   (global-set-key (kbd "<C-S-right>")  'buf-move-right)))
+		   (global-set-key (kbd "<C-S-right>")  'buf-move-right)
+                   ))
    (:name multiple-cursors
           :after (progn 
                    (global-set-key (kbd "C-S-c C-S-c") 'mc/edit-lines)
@@ -138,8 +139,6 @@
 (windmove-default-keybindings 'meta)
 (setq windmove-wrap-around t)
 
-;; stop windmoving when in Org-mode
-(setq org-replace-disputed-keys t)
 (setq paredit-replace-disputed-keys t)
 
 ;; Awesome. winner-mode has a undo mechanism on window layouts
@@ -577,18 +576,18 @@
 ;; the 'All Mail' folder by pressing ``ma''.
 
 (setq mu4e-maildir-shortcuts
-    '( ("/INBOX" . ?i)
-       ("/drafts" . ?d)
-       ("/archive" . ?a)))
+      '( ("/INBOX" . ?i)
+         ("/drafts" . ?d)
+         ("/archive" . ?a)))
 
 ;; allow for updating mail using 'U' in the main view:
 (setq mu4e-get-mail-command "offlineimap")
 
 ;; something about ourselves
 (setq
-   user-mail-address "anders.konring@gmail.com"
-   user-full-name  "Anders Konring"
-   mu4e-compose-signature "anders konring")
+ user-mail-address "anders.konring@gmail.com"
+ user-full-name  "Anders Konring"
+ mu4e-compose-signature "anders konring")
 
 ;; sending mail -- replace USERNAME with your gmail username
 ;; also, make sure the gnutls command line utils are installed
@@ -596,13 +595,13 @@
 
 (require 'smtpmail)
 (setq message-send-mail-function 'smtpmail-send-it
-   starttls-use-gnutls t
-   smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
-   smtpmail-auth-credentials
-     '(("smtp.gmail.com" 587 "anders.konring@gmail.com" nil))
-   smtpmail-default-smtp-server "smtp.gmail.com"
-   smtpmail-smtp-server "smtp.gmail.com"
-   smtpmail-smtp-service 587)
+      starttls-use-gnutls t
+      smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
+      smtpmail-auth-credentials
+      '(("smtp.gmail.com" 587 "anders.konring@gmail.com" nil))
+      smtpmail-default-smtp-server "smtp.gmail.com"
+      smtpmail-smtp-server "smtp.gmail.com"
+      smtpmail-smtp-service 587)
 
 ;; don't keep message buffers around
 (setq message-kill-buffer-on-exit t)
@@ -625,6 +624,6 @@
       (message "Size of all marked files: %s"
                (progn 
                  (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
-                  (match-string 1))))))
+                 (match-string 1))))))
 
- (define-key dired-mode-map (kbd "?") 'dired-get-size)
+(define-key dired-mode-map (kbd "?") 'dired-get-size)
