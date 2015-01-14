@@ -604,13 +604,6 @@
    smtpmail-smtp-server "smtp.gmail.com"
    smtpmail-smtp-service 587)
 
-;; alternatively, for emacs-24 you can use:
-;;(setq message-send-mail-function 'smtpmail-send-it
-;;     smtpmail-stream-type 'starttls
-;;     smtpmail-default-smtp-server "smtp.gmail.com"
-;;     smtpmail-smtp-server "smtp.gmail.com"
-;;     smtpmail-smtp-service 587)
-
 ;; don't keep message buffers around
 (setq message-kill-buffer-on-exit t)
 
@@ -622,3 +615,16 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+
+;; Get size of folders
+(defun dired-get-size ()
+  (interactive)
+  (let ((files (dired-get-marked-files)))
+    (with-temp-buffer
+      (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
+      (message "Size of all marked files: %s"
+               (progn 
+                 (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
+                  (match-string 1))))))
+
+ (define-key dired-mode-map (kbd "?") 'dired-get-size)
