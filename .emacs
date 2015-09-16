@@ -3,7 +3,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Packages
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(require 'cl)				
+(require 'cl)
+
 (add-to-list 'load-path "~/.emacs.d/el-get/el-get")
 
 (unless (require 'el-get nil t)
@@ -58,7 +59,6 @@
                         (add-hook 'lisp-interaction-mode-hook #'enable-paredit-mode)
                         (add-hook 'scheme-mode-hook           #'enable-paredit-mode)))))
 
-;; now set our own packages
 (setq
  my:el-get-packages
  '(el-get				
@@ -67,21 +67,27 @@
    switch-window			
    company-mode
    clojure-mode
-   twitter
-   cider
    color-theme-solarized
    org-ac
+   gnuplot-mode
+   cider
+   spinner
    lorem-ipsum
    ido-ubiquitous
    inf-ruby
+   projectile
    openwith
    ledger-mode
    org-mode
+   exec-path-from-shell
    undo-tree
    browse-kill-ring
    yasnippet
    json-mode
-   color-theme		                
+   ;; mu4e (build script corrupted)
+   color-theme
+   nodejs-repl
+   js2-mode
    color-theme-tango))	                
 
 
@@ -113,15 +119,16 @@
 (unless (string-match "apple-darwin" system-configuration)
   ;; on mac, there's always a menu bar drawn, don't have it empty
   (menu-bar-mode -1))
+
 (color-theme-solarized-dark)            ; pick my favorite color-theme
 
 ;; choose your own fonts, in a system dependend way
 (if (and (string-match "apple-darwin" system-configuration) window-system)
     (set-face-font 'default "Monaco-12")
-  (set-face-font 'default "Monospace-9"))
+  (set-face-font 'default "Monospace-10"))
 
 (global-hl-line-mode 1)			; highlight current line
-(global-linum-mode 1)			; add line numbers on the left
+;; (global-linum-mode 0)			; add line numbers on the left
 
 ;; avoid compiz manager rendering bugs
 (add-to-list 'default-frame-alist '(alpha . 100))
@@ -169,6 +176,10 @@
 ;; Well the real default would be C-c C-j C-y C-c C-k.
 (define-key term-raw-map  (kbd "C-y") 'term-paste)
 
+;; Setting environment for shell and term
+(when (memq window-system '(mac ns))
+  (exec-path-from-shell-initialize))
+
 ;; use ido for minibuffer completion
 (require 'ido)
 (ido-mode t)
@@ -199,6 +210,7 @@
   (set-frame-parameter nil 'fullscreen
 		       (if (frame-parameter nil 'fullscreen) nil 'fullboth)))
 (global-set-key [f11] 'fullscreen)
+(setq ns-pop-up-frames nil)
 
 (show-paren-mode t)
 (tooltip-mode -1)
@@ -206,6 +218,8 @@
 
 ;; Find file from home
 (setq default-directory "~/")
+
+(projectile-global-mode)
 
 ;; Stop spreading the *~ files all over
 ;; keep the temporary files in a temp-directory
@@ -253,7 +267,7 @@
   "Write the contents of *scratch* to the file name
 `persistent-scratch-file-name'."
   (with-current-buffer (get-buffer-create "*scratch*")
-    (write-region (point-min) (point-max) "~/.emacs-persistent-scratch")))
+    (write-region (point-min) (point-max) "~/.emacs.d/.emacs-persistent-scratch")))
 
 (defun load-persistent-scratch ()
   "Load the contents of `persistent-scratch-file-name' into the
@@ -269,6 +283,7 @@
 ;; Globally enable company mode
 (add-hook 'after-init-hook 'global-company-mode)
 
+
 ;; Org mode
 (setq org-default-notes-file "~/Dropbox/org/notes.org")
 (define-key global-map "\C-cc" 'org-capture)
@@ -279,12 +294,14 @@
 (defun org-dir ()
   "Open dired-mode in the org directory"
   (interactive)
-  (find-file org-agenda-files))
+  (find-file "/Users/akonring/Dropbox/org"))
 
 ;; ERC autojoin and open
 (setq erc-auto-reconnect 1)
+(setq erc-join-buffer 'bury)
 (setq erc-autojoin-channels-alist
-      '(("freenode.net" "#emacs" "#wiki" "#nethack" "#clojure" "#clojurescript" "##math" "##crypto")))
+      '(("freenode.net" "#org-mode" "#emacs" "#nethack" "#clojure" "#clojurescript" "##math" "##crypto" "#bitcoin" "#bitcoinj")))
+
 
 (defun erc-start-or-switch ()
   "Connect to ERC, or switch to last active buffer"
@@ -296,82 +313,37 @@
 
 ;; Spelling
 
-(setq ispell-personal-dictionary "~/.ispell")
+(setq ispell-program-name "aspell")
+(setq ispell-extra-args '("--sug-mode=ultra"))
+
 
 ;; Remove flyspell from unrelated modes
+(dolist (hook '(text-mode-hook
+                org-mode-hook
+                magit-mode-hook))
+      (add-hook hook (lambda () (flyspell-mode 1))))
+
 (dolist (hook '(change-log-mode-hook 
  		log-edit-mode-hook))
   (add-hook hook (lambda () (flyspell-mode -1))))
-
-(defun my-ispell-danish-dictionary ()
-  "Switch to the Danish dictionary."
-  (interactive)
-  (ispell-change-dictionary "dansk"))
-
-(require 'easymenu)
-(easy-menu-add-item  
- nil 
- '("tools" "spell")
- ["Select Danish Dict" my-ispell-danish-dictionary t])
-
-;; Language pattern rules, just names some common used words of the
-;; languages that will be guessed upon.
-(defvar guess-language-rules
-  '(("american" ;; "english"
-     . "\\<\\(of\\|the\\|and\\|or\\|how\\)\\>")
-    ("dansk"
-     . "\\<\\(og\\|den\\|det\\|der\\|vi\\|eller\\|nogle\\|kun\\)\\>")))
-
-;; main guess method
-(defun guess-buffer-language ()
-  "Guess language in the current buffer."
-  (save-excursion 
-    (goto-char (point-min))
-    (let* ((count (map 'list (lambda (x)
-                               (let ((count (count-matches (cdr x))))
-                                 (cons (if (stringp count)
-                                           (string-to-number count) ;; emacs v21
-                                         count)                   ;; emacs v22
-                                       (car x))))
-                       guess-language-rules))
-           (key (car (sort (map 'list 'car count) '>))))
-      (if (number-or-marker-p key)
-          (cdr (assoc key count))
-        ;; return first language as default
-        (car (car guess-language-rules))))))
-
-;; hook the language guesser on to the flyspell mode
-(add-hook 'flyspell-mode-hook
-	  (lambda () (ispell-change-dictionary
-		      (guess-buffer-language))))
-
-;; interactive wrapper
-(defun guess-language ()
-  "Set the language of this buffer by guess."
-  (interactive)
-  (ispell-change-dictionary (guess-buffer-language))
-  (setq flyspell-mode 1)
-  (flyspell-buffer))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(ledger-binary-path "/Users/anderskonring/.cabal/bin/hledger")
  '(openwith-associations
    (quote
     (("\\.pdf\\'" "open"
       (file))
-     ("\\.mp3\\'" "open"
-      (file))
-     ("\\.\\(?:mpe?g\\|avi\\|wmv\\)\\'" "open"
+     ("\\.\\(?:mpeg\\|avi\\|wmv\\)\\'" "open"
       ("-idx" file))
-     ("\\.\\(?:jp?g\\|png\\)\\'" "open"
+     ("\\.\\(?:jpg\\|png\\|jpeg\\)\\'" "open"
       (file)))))
+ '(openwith-mode t)
  '(org-agenda-files
    (quote
-    ("~/Dropbox/org/projects.org" "~/Dropbox/org/logs.org" "~/Dropbox/education/eth/ethp.org" "/Users/anderskonring/Dropbox/org/notes.org" "~/Dropbox/akonring/org/index.org" "~/Dropbox/org/contacts.org" "/Users/anderskonring/Dropbox/org/mustrun.org")))
+    ("/Users/akonring/Dropbox/org/notes.org" "~/Dropbox/akonring/org/index.org")))
  '(org-agenda-ndays 14)
  '(org-capture-templates
    (quote
@@ -390,7 +362,8 @@
      ("\\.pdf\\'" . "open %s"))))
  '(org-modules
    (quote
-    (org-bbdb org-bibtex org-crypt org-ctags org-docview org-id org-info org-jsinfo org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-beamer org-mu4e)))
+    (org-bbdb org-bibtex org-crypt org-ctags org-docview org-id org-info org-jsinfo org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-beamer org-mu4e ox-bibtex)))
+ '(send-mail-function (quote smtpmail-send-it))
  '(tex-dvi-view-command
    (quote
     (cond
@@ -403,16 +376,37 @@
      (t "dvi2tty * | cat -s"))))
  '(uniquify-buffer-name-style (quote forward) nil (uniquify)))
 
+
 (setq org-agenda-skip-scheduled-if-deadline-is-shown t)
 (setq org-log-done 'time)
 
+(defun get-string-from-file (filePath)
+  "Return filePath's file content."
+  (with-temp-buffer
+    (insert-file-contents filePath)
+    (buffer-string)))
+
+(require 'dash)
+(defun parse-layout (layout)
+  (let ((string (get-string-from-file layout)))
+    (->> string
+        (replace-regexp-in-string "\\(\"\\).*\\'" "\"")
+        (replace-regexp-in-string "\\(\%\\).*\\'" "%%"))))
+
+;; (setq org-html-preamble (parse-layout "/Users/akonring/Dropbox/akonring/public_html/layout.pre"))
+
+(setq org-export-html-style-include-default "")
+
+(setq org-latex-pdf-process 
+      '("latexmk -pdflatex='pdflatex -interaction nonstopmode' -pdf -bibtex -f  %f"))
+
 ;; Org publishing
 (setq org-publish-project-alist
-      '(("akonring-pages"
-         :base-directory "/Users/anderskonring/Dropbox/akonring/org/"
+      '(("pages"
+         :base-directory "/Users/akonring/Dropbox/akonring/org/"
          :html-extension "html"
          :base-extension "org"
-         :publishing-directory "/Users/anderskonring/Dropbox/akonring/public_html/"
+         :publishing-directory "/Users/akonring/Dropbox/akonring/public_html/"
          :publishing-function (org-html-publish-to-html)
          :recursive t
          :auto-sitemap t
@@ -422,60 +416,29 @@
          :with-tasks nil
          :section-numbers nil
          :with-toc nil
-         :html-head-extra
-         "<link rel=\"stylesheet\" href=\"u/bootstrap.min.css\" />
-<link rel=\"stylesheet\" href=\"index.css\" type=\"text/css\" />
-    <script src=\"http://www.google.com/jsapi\" type=\"text/javascript\"></script>
-    <script type=\"text/javascript\">
-      google.load(\"jquery\", \"1.3.1\");
-    </script>"
-         :html-preamble ,html-preamble
+         :html-head-extra"<meta charset=\"utf-8\">
+    <meta http-equiv=\"X-UA-Compatible\" content=\"chrome=1\">
+    <title>akonring</title>
+    <link href=\"stylesheets/styles.css\" media=\"all\" rel=\"stylesheet\" type=\"text/css\">
+<link href=\"https://fonts.googleapis.com/css?family=Lato:300italic,700italic,300,700\" media=\"all\" rel=\"stylesheet\" type=\"text/css\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\">"
          :htmlized-source t
-         :html-postamble ,html-postamble)
-        ("akonring-articles"
-         :base-directory "/Users/anderskonring/Dropbox/akonring/org/articles/"
-         :publishing-directory "/Users/anderskonring/Dropbox/akonring/public_html/articles"
-         :base-extension "org"
-         :html-extension "html"
-         :recursive t
-         :makeindex t
-         :preserve-breaks nil
-         :sitemap-sort-files chronologically         
-         :publishing-function org-html-publish-to-html
-         :headline-levels 3
-         :section-numbers nil
-         :with-toc nil
-         :htmlized-source t
-         :html-postamble t
-         :html-preamble t)
-        ("akonring-articles-source"
-         :base-directory "/Users/anderskonring/Dropbox/akonring/org/articles/"
-         :base-extension "org"
-         :publishing-directory "~/Dropbox/public_html/"
-         :publishing-function (org-org-publish-to-org)
-         :recursive t
-         :with-tasks nil
-         :htmlized-source t)
-        ("akonring-rss"
-         :base-directory "/Users/anderskonring/Dropbox/akonring/org/"
-         :base-extension "org"
-         :publishing-directory "~/Dropbox/akonring/public_html/"
-         :publishing-function (org-rss-publish-to-rss)
-         :html-link-home "/Users/anderskonring/Dropbox/akonring/public_html/"
-         :html-link-use-abs-url t
-         :exclude ".*"
-         :include ("akonring-blog.org"))
-        ("akonring-images"
-         :base-directory "/Users/anderskonring/Dropbox/akonring/org/images/"
-         :base-extension "jpg\\|gif\\|png"
-         :publishing-directory "~/Dropbox/akonring/public_html/images/"
-         :publishing-function org-publish-attachment)
-        ("akonring-css"
-         :base-directory "/Users/anderskonring/Dropbox/akonring/org/stylesheets/"
-         :base-extension "css"
-         :publishing-directory "/Users/anderskonring/Dropbox/akonring/public_html/stylesheets/"
-         :publishing-function org-publish-attachment)
-        ("website" :components ("akonring-pages" "akonring-articles" "akonring-rss"))))
+         :html-postamble  "</div>")
+	 ("homepage-css"
+	  :base-directory "~/Dropbox/akonring/org/"
+	  :base-extension "css"
+	  :publishing-directory "~/Dropbox/public_html"
+	  :publishing-function org-publish-attachment)))
+
+(defun my-save-then-publish ()
+  (interactive)
+  (save-buffer)
+  (load-dot-emacs)
+  (org-save-all-org-buffers)
+  (let (org-export-html-style-default)
+    (setq org-export-html-style-default "")
+    (org-publish "pages")))
+
 
 (global-set-key (kbd "C-h C-f") 'find-function)
 
@@ -489,6 +452,14 @@
     (message "Aborting")))
 
 (global-set-key (kbd "C-x C-r") 'ido-recentf-open)
+
+;; (defadvice ido-find-file (after find-file-sudo activate)
+;;   "Find file as root if necessary."
+;;   (unless (and buffer-file-name
+;;                (file-writable-p buffer-file-name))
+;;     (find-alternate-file (concat "/sudo:root@localhost:" buffer-file-name))))
+
+
 
 (global-set-key (kbd "A-u") 'revert-buffer)
 
@@ -509,20 +480,40 @@
 (require 'mm-util)
 (add-to-list 'mm-inhibit-file-name-handlers 'openwith-file-handler)
 (global-set-key "\M- " 'hippie-expand)
+
+;; The actual expansion function
+(defun try-expand-by-dict (old)
+  ;; old is true if we have already attempted an expansion
+  (unless (bound-and-true-p ispell-minor-mode)
+    (ispell-minor-mode 1))
+
+  ;; english-words.txt is the fallback dicitonary
+  (if (not ispell-alternate-dictionary)
+      (setq ispell-alternate-dictionary (file-truename "~/.emacs.d/misc/english-words.txt")))
+  (let ((lookup-func (if (fboundp 'ispell-lookup-words)
+                       'ispell-lookup-words
+                       'lookup-words)))
+    (unless old
+      (he-init-string (he-lisp-symbol-beg) (point))
+      (if (not (he-string-member he-search-string he-tried-table))
+        (setq he-tried-table (cons he-search-string he-tried-table)))
+      (setq he-expand-list
+            (and (not (equal he-search-string ""))
+                 (funcall lookup-func (concat (buffer-substring-no-properties (he-lisp-symbol-beg) (point)) "*")))))
+    (if (null he-expand-list)
+      (if old (he-reset-string))
+      (he-substitute-string (car he-expand-list))
+      (setq he-expand-list (cdr he-expand-list))
+      t)
+    ))
+
+(setq hippie-expand-try-functions-list
+      '(try-expand-dabbrev
+        try-expand-dabbrev-all-buffers
+        try-expand-by-dict))
+
 (setq abbrev-file-name             ;; tell emacs where to read abbrev
       "~/.emacs.d/abbrev_defs")
-
-(defun my-interactive-eval-to-repl (form)
-  (let ((buffer nrepl-nrepl-buffer))
-    (nrepl-send-string form (nrepl-handler buffer) nrepl-buffer-ns)))
-
-(defun my-eval-last-expression-to-repl ()
-  (interactive)
-  (my-interactive-eval-to-repl (nrepl-last-expression)))
-
-(eval-after-load 'nrepl
-  '(progn 
-     (define-key nrepl-interaction-mode-map (kbd "C-x C-e") 'my-eval-last-expression-to-repl)))
 
 (setq fill-column 20)
 
@@ -532,7 +523,25 @@
 (setq org-indent-indentation-per-level 2)
 (put 'downcase-region 'disabled nil)
 (setq org-list-allow-alphabetical t)
-(add-hook 'org-mode-hook (lambda () (setq truncate-lines nil)))
+(add-hook 'org-mode-hook (lambda ()
+                           (setq truncate-lines nil)
+                           (add-to-list 'org-latex-classes '("thesis" "\\documentclass[11pt]{report}" ("\\chapter{%s}" . "\\chapter*{%s}") ("\\section{%s}" . "\\section*{%s}") ("\\subsection{%s}" . "\\subsection*{%s}") ("\\subsubsection{%s}" . "\\subsubsection*{%s}")))))
+(setq org-todo-keyword-faces
+      '(("TODO" . (:foreground "red" :weight bold))
+        ("STARTED" . (:foreground "blue" :weight bold))))
+
+(setq org-todo-keywords
+      '((sequence "TODO" "STARTED" "DONE")))
+
+(defadvice org-display-inline-images
+  (around handle-openwith
+          (&optional include-linked refresh beg end) activate compile)
+  (if openwith-mode
+      (progn
+        (openwith-mode -1)
+        ad-do-it
+        (openwith-mode 1))
+    ad-do-it))
 (setq org-columns-default-format "%20ITEM(Task) %10Effort(Effort){:} %10CLOCKSUM")
 
 (when (fboundp 'eww)
@@ -549,18 +558,17 @@
 (setq org-icalendar-use-deadline '(event-if-todo event-if-not-todo))
 
 ;; this hook saves an ics file once an org-buffer is saved
-(run-with-idle-timer 300 t 'org-icalendar-combine-agenda-files)
+(run-with-idle-timer 10000 t 'org-icalendar-combine-agenda-files)
 
-(add-to-list 'load-path "~/.emacs.d/el-get/mu/mu4e")
-
+(add-to-list 'load-path "~/.emacs.d/el-get/mu4e/mu4e")
 (require 'mu4e)
 
-(setq mu4e-maildir "~/.mail/akonring")
-(setq mu4e-mu-binary  "/Users/anderskonring/.emacs.d/el-get/mu/mu/mu")
+(setq mu4e-maildir "~/.mail/personal")
+(setq mu4e-mu-binary  "~/.emacs.d/el-get/mu4e/mu/mu")
 
 
-(setq mu4e-drafts-folder "/drafts")
-(setq mu4e-sent-folder   "/sent")
+(setq mu4e-drafts-folder "/Drafts")
+(setq mu4e-sent-folder   "/Sent Mail")
 (setq mu4e-trash-folder  "/Trash")
 
 ;; don't save message to Sent Messages, Gmail/IMAP takes care of this
@@ -576,24 +584,41 @@
 ;; the 'All Mail' folder by pressing ``ma''.
 
 (setq mu4e-maildir-shortcuts
-      '( ("/INBOX" . ?i)
-         ("/drafts" . ?d)
-         ("/archive" . ?a)))
+      '(("/INBOX" . ?i)
+        ("/Drafts" . ?d)
+        ("/Sent Mail" . ?s)))
 
 ;; allow for updating mail using 'U' in the main view:
 (setq mu4e-get-mail-command "offlineimap")
 
-;; something about ourselves
-(setq
- user-mail-address "anders.konring@gmail.com"
- user-full-name  "Anders Konring"
- mu4e-compose-signature "anders konring")
+;; something about me
+(let ((mail "anders.konring@gmail.com"))
+  (setq
+   mu4e-user-mail-address-list (list mail "ako@cs.au.dk")
+   user-mail-address mail
+   user-full-name  "Anders Konring"
+   mu4e-compose-signature "anders konring"
+   mu4e-compose-dont-reply-to-self t))
 
-;; sending mail -- replace USERNAME with your gmail username
-;; also, make sure the gnutls command line utils are installed
-;; package 'gnutls-bin' in Debian/Ubuntu
+(defun mu4e-msgv-action-view-in-browser (msg)
+  "View the body of the message in a web browser."
+  (interactive)
+  (let ((html (mu4e-msg-field (mu4e-message-at-point t) :body-html))
+        (tmpfile (format "%s/%d.html" temporary-file-directory (random))))
+    (unless html (error "No html part for this message"))
+    (with-temp-file tmpfile
+      (insert
+       "<html>"
+       "<head><meta http-equiv=\"content-type\""
+       "content=\"text/html;charset=UTF-8\">"
+       html))
+    (browse-url (concat "file://" tmpfile))))
 
+(add-to-list 'mu4e-view-actions
+             '("View in browser" . mu4e-msgv-action-view-in-browser) t)
+ 
 (require 'smtpmail)
+
 (setq message-send-mail-function 'smtpmail-send-it
       starttls-use-gnutls t
       smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
@@ -608,12 +633,6 @@
 
 ;; Turn off sounds
 (setq visible-bell t)
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
 
 ;; Get size of folders
 (defun dired-get-size ()
@@ -627,3 +646,43 @@
                  (match-string 1))))))
 
 (define-key dired-mode-map (kbd "?") 'dired-get-size)
+
+(add-hook 'cider-repl-mode-hook #'company-mode)
+(add-hook 'cider-mode-hook #'company-mode)
+
+(add-to-list 'auto-mode-alist '("\\.json$" . js-mode))
+(add-to-list 'auto-mode-alist '("\\.ts$" . js-mode))
+
+(add-hook 'js-mode-hook 'js2-minor-mode)
+
+(setq org-export-before-processing-hook nil)
+
+(require 'ob-plantuml)
+
+
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((R . t)
+   (emacs-lisp . t)
+   (sh . t)
+   (sql . t)
+   (gnuplot . t)
+   (python . t)))
+
+(setq org-plantuml-jar-path "/usr/local/Cellar/plantuml/8024/plantuml.8024.jar")
+
+(setq bookmark-default-file "~/Dropbox/common/emacs/bookmarks.bmk" bookmark-save-flag 1)
+
+(add-hook 'java-mode-hook (lambda ()
+                                (setq c-basic-offset 4
+                                      tab-width 4
+                                      indent-tabs-mode nil)))
+
+
+
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
