@@ -1,5 +1,3 @@
-;; -*- mode: lisp; indent-tabs-mode: nil -*-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Packages
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -20,7 +18,7 @@
  el-get-sources
  '((:name buffer-move			; have to add your own keys
 	  :after (progn
-		   (global-set-key (kbd "<C-S-up>")     'buf-mojive-up)
+		   (global-set-key (kbd "<C-S-up>")     'buf-move-up)
 		   (global-set-key (kbd "<C-S-down>")   'buf-move-down)
 		   (global-set-key (kbd "<C-S-left>")   'buf-move-left)
 		   (global-set-key (kbd "<C-S-right>")  'buf-move-right)
@@ -53,6 +51,7 @@
    (:name paredit
           :after (progn (autoload 'enable-paredit-mode "paredit" "Turn on pseudo-structural editing of Lisp code." t)
                         (add-hook 'emacs-lisp-mode-hook       #'enable-paredit-mode)
+			(add-hook 'clojure-mode-hook       #'enable-paredit-mode)
                         (add-hook 'eval-expression-minibuffer-setup-hook #'enable-paredit-mode)
                         (add-hook 'ielm-mode-hook             #'enable-paredit-mode)
                         (add-hook 'lisp-mode-hook             #'enable-paredit-mode)
@@ -78,23 +77,25 @@
    projectile
    openwith
    ledger-mode
+   ess
    org-mode
    exec-path-from-shell
    undo-tree
    browse-kill-ring
    yasnippet
-   json-mode
+   ;;json-mode
    ;; mu4e (build script corrupted)
    color-theme
    nodejs-repl
    js2-mode
-   color-theme-tango))	                
+   web-mode
+   color-theme-tango
+   idomenu))	                
 
 
 ;; Some recipes require extra tools to be installed
 ;; CVS install
-(when (ignore-errors (el-get-executable-find "cvs"))
-  (add-to-list 'my:el-get-packages 'emacs-goodies-el)) ; the debian addons for emacs
+(when (ignore-errors (el-get-executable-find "cvs"))  (add-to-list 'my:el-get-packages 'emacs-goodies-el)) ; the debian addons for emacs
 
 (when (ignore-errors (el-get-executable-find "svn"))
   (loop for p in '(psvn    		; M-x svn-status
@@ -120,12 +121,12 @@
   ;; on mac, there's always a menu bar drawn, don't have it empty
   (menu-bar-mode -1))
 
-(color-theme-solarized-dark)            ; pick my favorite color-theme
+;;(color-theme-solarized-dark)            ; pick my favorite color-theme
+					;(load-theme 'cyberpunk t)
 
 ;; choose your own fonts, in a system dependend way
-(if (and (string-match "apple-darwin" system-configuration) window-system)
-    (set-face-font 'default "Monaco-12")
-  (set-face-font 'default "Monospace-10"))
+(when (eq system-type 'darwin)
+  (set-default-font "-*-Hack-normal-normal-normal-*-12-*-*-*-m-0-iso10646-1"))
 
 (global-hl-line-mode 1)			; highlight current line
 ;; (global-linum-mode 0)			; add line numbers on the left
@@ -158,6 +159,7 @@
 ;; Shellmode
 (autoload 'ansi-color-for-comint-mode-on "ansi-color" nil t)
 (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+(savehist-mode) 
 
 ;; If you do use M-x term, you will notice there's line mode that acts like
 ;; emacs buffers, and there's the default char mode that will send your
@@ -192,7 +194,7 @@
 
 (require 'ido-ubiquitous)
 (ido-ubiquitous-mode t)
-(global-set-key (kbd "C-x C-b") 'ido-switch-buffer)
+(global-set-key (kbd "C-x C-b") 'ido-switch-bufferxo)
 (global-set-key (kbd "C-x C-c") 'ido-switch-buffer)
 (global-set-key (kbd "C-x B") 'ibuffer)
 
@@ -228,13 +230,13 @@
 (setq auto-save-file-name-transforms
       `((".*" ,temporary-file-directory t)))
 
+(setq create-lockfiles nil)
+
 ;; Load .emacs in one line
 (defun load-dot-emacs ()
   "Loading dot emacs file"
   (interactive)
   (load-file "~/.emacs"))
-
-(setq tramp-default-method "ssh")
 
 ;; Configuration of Multi Cursor package
 (global-set-key (kbd "C->") 'mc/mark-next-like-this)
@@ -285,6 +287,7 @@
 
 
 ;; Org mode
+(require 'org)
 (setq org-default-notes-file "~/Dropbox/org/notes.org")
 (define-key global-map "\C-cc" 'org-capture)
 (global-set-key (kbd "C-c a") 'org-agenda)
@@ -300,8 +303,7 @@
 (setq erc-auto-reconnect 1)
 (setq erc-join-buffer 'bury)
 (setq erc-autojoin-channels-alist
-      '(("freenode.net" "#org-mode" "#emacs" "#nethack" "#clojure" "#clojurescript" "##math" "##crypto" "#bitcoin" "#bitcoinj")))
-
+      '(("freenode.net" "#org-mode" "#emacs" "#nethack" "#clojure" "#clojurescript" "##math" "##crypto" "#bitcoin" "#bitcoinj") ("oftc.net" "#zcash")))
 
 (defun erc-start-or-switch ()
   "Connect to ERC, or switch to last active buffer"
@@ -309,20 +311,23 @@
   (if (get-buffer "irc.freenode.net:6667") ;; ERC already active?
       (erc-track-switch-buffer 1) ;; switch to last active
     (when (y-or-n-p "Start ERC? ") ;; maybe start ERC
-      (erc :server "irc.freenode.net" :port 6667 :nick "akonring"))))
+      (erc :server "irc.freenode.net" :port 6667 :nick "akonring")
+      (erc :server "irc.oftc.net" :port 6667 :nick "akonring"))))
 
 ;; Spelling
 
 (setq ispell-program-name "aspell")
 (setq ispell-extra-args '("--sug-mode=ultra"))
+(setq ispell-list-command "--list")
 
 
-;; Remove flyspell from unrelated modes
+;; Add flyspell to related modes
 (dolist (hook '(text-mode-hook
                 org-mode-hook
                 magit-mode-hook))
-      (add-hook hook (lambda () (flyspell-mode 1))))
+  (add-hook hook (lambda () (flyspell-mode 1))))
 
+;; Remove flyspell from unrelated modes
 (dolist (hook '(change-log-mode-hook 
  		log-edit-mode-hook))
   (add-hook hook (lambda () (flyspell-mode -1))))
@@ -332,6 +337,13 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(ansi-color-names-vector
+   ["#000000" "#8b0000" "#00ff00" "#ffa500" "#7b68ee" "#dc8cc3" "#93e0e3" "#dcdccc"])
+ '(custom-safe-themes
+   (quote
+    ("71ecffba18621354a1be303687f33b84788e13f40141580fa81e7840752d31bf" "8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26" default)))
+ '(fci-rule-color "#383838")
+ '(magit-branch-arguments (quote ("--track")))
  '(openwith-associations
    (quote
     (("\\.pdf\\'" "open"
@@ -343,7 +355,7 @@
  '(openwith-mode t)
  '(org-agenda-files
    (quote
-    ("/Users/akonring/Dropbox/org/notes.org" "~/Dropbox/akonring/org/index.org")))
+    ("~/Dropbox/org/chainalysis.org" "~/Dropbox/org/read.org" "~/Dropbox/org/akonring.org" "~/Dropbox/edu/thesis/agenda.org" "/Users/akonring/Dropbox/org/notes.org")))
  '(org-agenda-ndays 14)
  '(org-capture-templates
    (quote
@@ -362,7 +374,7 @@
      ("\\.pdf\\'" . "open %s"))))
  '(org-modules
    (quote
-    (org-bbdb org-bibtex org-crypt org-ctags org-docview org-id org-info org-jsinfo org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-beamer org-mu4e ox-bibtex)))
+    (org-bbdb org-bibtex org-crypt org-ctags org-docview org-id org-info org-habit org-irc org-mew org-mhe org-rmail org-vm org-wl org-w3m org-mu4e ox-bibtex)))
  '(send-mail-function (quote smtpmail-send-it))
  '(tex-dvi-view-command
    (quote
@@ -375,7 +387,6 @@
       "yap")
      (t "dvi2tty * | cat -s"))))
  '(uniquify-buffer-name-style (quote forward) nil (uniquify)))
-
 
 (setq org-agenda-skip-scheduled-if-deadline-is-shown t)
 (setq org-log-done 'time)
@@ -390,15 +401,14 @@
 (defun parse-layout (layout)
   (let ((string (get-string-from-file layout)))
     (->> string
-        (replace-regexp-in-string "\\(\"\\).*\\'" "\"")
-        (replace-regexp-in-string "\\(\%\\).*\\'" "%%"))))
+	 (replace-regexp-in-string "\\(\"\\).*\\'" "\"")
+	 (replace-regexp-in-string "\\(\%\\).*\\'" "%%"))))
 
-;; (setq org-html-preamble (parse-layout "/Users/akonring/Dropbox/akonring/public_html/layout.pre"))
-
+(setq org-html-preamble (parse-layout "/Users/akonring/Dropbox/akonring/public_html/layout.pre"))
 (setq org-export-html-style-include-default "")
 
 (setq org-latex-pdf-process 
-      '("latexmk -pdflatex='pdflatex -interaction nonstopmode' -pdf -bibtex -f  %f"))
+      '("latexmk -pdflatex='pdflatex -interaction nonstopmode' -pdf  %f"))
 
 ;; Org publishing
 (setq org-publish-project-alist
@@ -424,11 +434,11 @@
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\">"
          :htmlized-source t
          :html-postamble  "</div>")
-	 ("homepage-css"
-	  :base-directory "~/Dropbox/akonring/org/"
-	  :base-extension "css"
-	  :publishing-directory "~/Dropbox/public_html"
-	  :publishing-function org-publish-attachment)))
+	("homepage-css"
+	 :base-directory "~/Dropbox/akonring/org/"
+	 :base-extension "css"
+	 :publishing-directory "~/Dropbox/public_html"
+	 :publishing-function org-publish-attachment)))
 
 (defun my-save-then-publish ()
   (interactive)
@@ -438,7 +448,6 @@
   (let (org-export-html-style-default)
     (setq org-export-html-style-default "")
     (org-publish "pages")))
-
 
 (global-set-key (kbd "C-h C-f") 'find-function)
 
@@ -450,6 +459,7 @@
   (if (find-file (ido-completing-read "Find recent file: " recentf-list))
       (message "Opening file...")
     (message "Aborting")))
+(ido-everywhere t)
 
 (global-set-key (kbd "C-x C-r") 'ido-recentf-open)
 
@@ -471,11 +481,43 @@
     (replace-string "ø" "oe")
     (replace-string "å" "aa"))) 
 
-(add-hook 'latex-mode-hook '(lambda()
-                              (defun tex-view ()
-                                (interactive)
-                                (tex-send-command "open"
-                                                  (tex-append tex-print-file ".pdf")))))
+;; AucTeX
+(setq TeX-auto-save t)
+(setq TeX-parse-self t)
+(setq-default TeX-master nil)
+(add-hook 'LaTeX-mode-hook 'visual-line-mode)
+(add-hook 'LaTeX-mode-hook 'flyspell-mode)
+(add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
+(add-hook 'LaTeX-mode-hook 'turn-on-reftex)
+(setq reftex-plug-into-AUCTeX t)
+(setq TeX-PDF-mode t)
+
+;; Use Skim as viewer, enable source <-> PDF sync
+;; make latexmk available via C-c C-c
+;; Note: SyncTeX is setup via ~/.latexmkrc (see below)
+;; (add-hook 'LaTeX-mode-hook (lambda ()
+;; 			     (push
+;; 			      '("latexmk" "latexmk -pdflatex='pdflatex -shell-escape' -pdf -bibtex -f  %s" TeX-run-TeX nil t
+;; 				:help "Run latexmk on file")
+;; 			      TeX-command-list))
+;; 	  (push
+;; 	   '("thesis" "make thesis" TeX-run-TeX nil t
+;; 	     :help "Run latexmk on file")
+;; 	   TeX-command-list)
+
+;; (push
+;;  '("thesis-quick" "make latex" TeX-run-TeX nil t
+;;    :help "Run latexmk on file")
+;;  TeX-command-list)
+
+;; (add-hook 'TeX-mode-hook '(lambda () (setq TeX-command-default "latexmk")))
+
+;; use Skim as default pdf viewer
+;; Skim's displayline is used for forward search (from .tex to .pdf)
+;; option -b highlights the current line; option -g opens Skim in the background  
+(setq TeX-view-program-selection '((output-pdf "PDF Viewer")))
+(setq TeX-view-program-list
+      '(("PDF Viewer" "/Applications/Skim.app/Contents/SharedSupport/displayline -b -g %n %o %b")))
 
 (require 'mm-util)
 (add-to-list 'mm-inhibit-file-name-handlers 'openwith-file-handler)
@@ -491,17 +533,17 @@
   (if (not ispell-alternate-dictionary)
       (setq ispell-alternate-dictionary (file-truename "~/.emacs.d/misc/english-words.txt")))
   (let ((lookup-func (if (fboundp 'ispell-lookup-words)
-                       'ispell-lookup-words
+			 'ispell-lookup-words
                        'lookup-words)))
     (unless old
       (he-init-string (he-lisp-symbol-beg) (point))
       (if (not (he-string-member he-search-string he-tried-table))
-        (setq he-tried-table (cons he-search-string he-tried-table)))
+	  (setq he-tried-table (cons he-search-string he-tried-table)))
       (setq he-expand-list
             (and (not (equal he-search-string ""))
                  (funcall lookup-func (concat (buffer-substring-no-properties (he-lisp-symbol-beg) (point)) "*")))))
     (if (null he-expand-list)
-      (if old (he-reset-string))
+	(if old (he-reset-string))
       (he-substitute-string (car he-expand-list))
       (setq he-expand-list (cdr he-expand-list))
       t)
@@ -524,18 +566,16 @@
 (put 'downcase-region 'disabled nil)
 (setq org-list-allow-alphabetical t)
 (add-hook 'org-mode-hook (lambda ()
-                           (setq truncate-lines nil)
-                           (add-to-list 'org-latex-classes '("thesis" "\\documentclass[11pt]{report}" ("\\chapter{%s}" . "\\chapter*{%s}") ("\\section{%s}" . "\\section*{%s}") ("\\subsection{%s}" . "\\subsection*{%s}") ("\\subsubsection{%s}" . "\\subsubsection*{%s}")))))
+                           (setq truncate-lines nil)))
 (setq org-todo-keyword-faces
-      '(("TODO" . (:foreground "red" :weight bold))
-        ("STARTED" . (:foreground "blue" :weight bold))))
+      '(("TODO" . (:foreground "red" :weight bold))))
 
 (setq org-todo-keywords
-      '((sequence "TODO" "STARTED" "DONE")))
+      '((sequence "TODO" "DONE")))
 
 (defadvice org-display-inline-images
-  (around handle-openwith
-          (&optional include-linked refresh beg end) activate compile)
+    (around handle-openwith
+	    (&optional include-linked refresh beg end) activate compile)
   (if openwith-mode
       (progn
         (openwith-mode -1)
@@ -557,15 +597,23 @@
 (setq org-icalendar-use-scheduled '(event-if-todo event-if-not-todo))
 (setq org-icalendar-use-deadline '(event-if-todo event-if-not-todo))
 
+(setq load-path (append (list (expand-file-name "~/emacs/icalendar")) load-path))
+(require 'icalendar)
+
 ;; this hook saves an ics file once an org-buffer is saved
 (run-with-idle-timer 10000 t 'org-icalendar-combine-agenda-files)
 
 (add-to-list 'load-path "~/.emacs.d/el-get/mu4e/mu4e")
 (require 'mu4e)
 
+(defun no-auto-fill ()
+  "Turn off auto-fill-mode."
+  (auto-fill-mode -1))
+
+(add-hook 'mu4e-compose-mode-hook #'no-auto-fill)
+(setq mu4e-attachment-dir  "~/Downloads")
 (setq mu4e-maildir "~/.mail/personal")
 (setq mu4e-mu-binary  "~/.emacs.d/el-get/mu4e/mu/mu")
-
 
 (setq mu4e-drafts-folder "/Drafts")
 (setq mu4e-sent-folder   "/Sent Mail")
@@ -616,14 +664,13 @@
 
 (add-to-list 'mu4e-view-actions
              '("View in browser" . mu4e-msgv-action-view-in-browser) t)
- 
+
 (require 'smtpmail)
 
 (setq message-send-mail-function 'smtpmail-send-it
       starttls-use-gnutls t
       smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
-      smtpmail-auth-credentials
-      '(("smtp.gmail.com" 587 "anders.konring@gmail.com" nil))
+      smtpmail-auth-credentials '(("smtp.gmail.com" 587 "anders.konring@gmail.com" nil))
       smtpmail-default-smtp-server "smtp.gmail.com"
       smtpmail-smtp-server "smtp.gmail.com"
       smtpmail-smtp-service 587)
@@ -650,8 +697,9 @@
 (add-hook 'cider-repl-mode-hook #'company-mode)
 (add-hook 'cider-mode-hook #'company-mode)
 
-(add-to-list 'auto-mode-alist '("\\.json$" . js-mode))
-(add-to-list 'auto-mode-alist '("\\.ts$" . js-mode))
+;; Way too slow with big json files
+;;(add-to-list 'auto-mode-alist '("\\.json$" . js-mode))
+;;(add-to-list 'auto-mode-alist '("\\.ts$" . js-mode))
 
 (add-hook 'js-mode-hook 'js2-minor-mode)
 
@@ -659,26 +707,14 @@
 
 (require 'ob-plantuml)
 
-
-(org-babel-do-load-languages
- 'org-babel-load-languages
- '((R . t)
-   (emacs-lisp . t)
-   (sh . t)
-   (sql . t)
-   (gnuplot . t)
-   (python . t)))
-
 (setq org-plantuml-jar-path "/usr/local/Cellar/plantuml/8024/plantuml.8024.jar")
 
 (setq bookmark-default-file "~/Dropbox/common/emacs/bookmarks.bmk" bookmark-save-flag 1)
 
 (add-hook 'java-mode-hook (lambda ()
-                                (setq c-basic-offset 4
-                                      tab-width 4
-                                      indent-tabs-mode nil)))
-
-
+			    (setq c-basic-offset 4
+				  tab-width 4
+				  indent-tabs-mode nil)))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -686,3 +722,27 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+(put 'upcase-region 'disabled nil)
+
+
+(setq org-latex-listings t)
+(add-to-list 'org-latex-packages-alist '("" "listings"))
+(add-to-list 'org-latex-packages-alist '("" "color"))
+
+(setq org-latex-caption-above nil)
+(eval-after-load 'org
+  (progn
+    (define-key org-mode-map (kbd "<C-S-up>") nil)
+    (define-key org-mode-map (kbd "<C-S-left>") nil)
+    (define-key org-mode-map (kbd "<C-S-right>") nil)
+    (define-key org-mode-map (kbd "<C-S-down>") nil)))
+
+
+;; SSH functions
+(defun chainalysis-anders
+    (interactive)
+  (find-file "/ssh:root@anders.chainalysis.com:/home/"))
+(setq auto-revert-buffer-list-filter 'magit-auto-revert-repository-buffers-p)
+
+(define-key global-map (kbd "A-s") 'shell)
+(setenv "ESHELL" "bash")
