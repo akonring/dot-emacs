@@ -738,7 +738,7 @@
     (define-key org-mode-map (kbd "<C-S-down>") nil)))
 
 
-;; SSH functions
+;; ssh functions
 (defun chainalysis-anders
     (interactive)
   (find-file "/ssh:root@anders.chainalysis.com:/home/"))
